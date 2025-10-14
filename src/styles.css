@@ -1,0 +1,94 @@
+/* Input dark mode styles */
+html.dark input[type="text"],
+html.dark input[type="number"],
+html.dark input[type="password"],
+html.dark input[type="email"],
+html.dark input[type="search"],
+html.dark input[type="radio"],
+html.dark select,
+html.dark textarea {
+	background: #22223b;
+	color: #fff;
+	border-color: #6d28d9;
+}
+html.dark input[type="radio"] {
+	accent-color: #a78bfa;
+}
+html.dark input:focus, html.dark select:focus, html.dark textarea:focus {
+	outline: 2px solid #a78bfa;
+	box-shadow: 0 0 0 2px #a78bfa;
+}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+body {
+	font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+	background: #f8fafc;
+	position: relative;
+}
+
+body::before {
+	content: '';
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100vw;
+	height: 100vh;
+	background: url('/src/assets/local-data-only.png') center center no-repeat;
+	background-size: 60vw;
+	opacity: 1;
+	z-index: 0;
+	pointer-events: none;
+	transform: rotate(-12deg);
+}
+
+body > #root {
+	position: relative;
+	z-index: 1;
+}
+.header {
+	background: white;
+	box-shadow: 0 1px 0 rgba(0,0,0,0.06);
+}
+.tab {
+	flex:1;
+	text-align:center;
+	padding:12px 8px;
+}
+.icon {
+	width:28px;
+	height:28px;
+	display:inline-block;
+}
+.card {
+	background:white;
+	border-radius:12px;
+	padding:12px;
+	box-shadow:0 6px 18px rgba(16,24,40,0.04);
+}
+.mobile-scroll {
+	-webkit-overflow-scrolling: touch;
+	overflow:auto;
+}
+.small { font-size: 12px; }
+
+/* Dark mode overrides */
+html.dark body {
+	background: #111827;
+	color: #fff;
+}
+html.dark .header {
+	background: #1f2937;
+	color: #fff;
+}
+html.dark .card {
+	background: #1f2937;
+	color: #fff;
+	box-shadow: 0 6px 18px rgba(168,139,250,0.25), 0 0 12px 2px #a78bfa;
+	border: 2px solid #a78bfa;
+}
+html.dark .tab {
+	color: #fff;
+}

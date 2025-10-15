@@ -1,6 +1,9 @@
 import React, {useEffect, useState} from 'react'
 import { loadState, saveState, clearState } from '../lib/storage'
 import { v4 as uuidv4 } from 'uuid'
+import nugImg from '../assets/nug.png'
+import hashImg from '../assets/hash.png'
+import waxImg from '../assets/wax.png'
 
 export default function Home({translations, lang}){
   const [state, setState] = useState(null)
@@ -115,15 +118,15 @@ export default function Home({translations, lang}){
           <div className="flex items-center space-x-3">
             <label className="flex items-center space-x-2">
               <input type="radio" checked={kind==='nug'} onChange={()=>setKind('nug')} />
-              <img src="/src/assets/nug.png" alt="nug" className="w-8 h-8"/>
+              <img src={nugImg} alt="nug" className="w-8 h-8"/>
             </label>
             <label className="flex items-center space-x-2">
               <input type="radio" checked={kind==='hash'} onChange={()=>setKind('hash')} />
-              <img src="/src/assets/hash.png" alt="hash" className="w-8 h-8"/>
+              <img src={hashImg} alt="hash" className="w-8 h-8"/>
             </label>
             <label className="flex items-center space-x-2">
               <input type="radio" checked={kind==='wax'} onChange={()=>setKind('wax')} />
-              <img src="/src/assets/wax.png" alt="wax" className="w-8 h-8"/>
+              <img src={waxImg} alt="wax" className="w-8 h-8"/>
             </label>
           </div>
 
@@ -160,9 +163,9 @@ export default function Home({translations, lang}){
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <img src={
-                    e.kind==='nug' ? '/src/assets/nug.png' :
-                    e.kind==='hash' ? '/src/assets/hash.png' :
-                    e.kind==='wax' ? '/src/assets/wax.png' : ''
+                    e.kind==='nug' ? nugImg :
+                    e.kind==='hash' ? hashImg :
+                    e.kind==='wax' ? waxImg : ''
                   } alt={e.kind} className="w-8 h-8"/>
                   <div>
                     <div className="text-sm">{new Date(e.createdAt).toLocaleString()}</div>

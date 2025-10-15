@@ -5,6 +5,7 @@ import HomeIcon from './icons/home.svg'
 import ChartIcon from './icons/chart.svg'
 import translations from './i18n'
 import { loadState, saveState } from './lib/storage'
+import backgroundLogo from './assets/local-data-only.png'
 
 
 export default function App() {
@@ -44,6 +45,8 @@ export default function App() {
     } else {
       document.documentElement.classList.remove('dark');
     }
+    // Set background logo
+    document.documentElement.style.setProperty('--background-logo', `url(${backgroundLogo})`);
     // Also store in localStorage for fast reload
     if (typeof window !== 'undefined') {
       window.localStorage && window.localStorage.setItem('joint-tracker-dark', darkMode ? 'true' : 'false');

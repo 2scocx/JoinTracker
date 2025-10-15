@@ -6,6 +6,7 @@ import ChartIcon from './icons/chart.svg'
 import translations from './i18n'
 import { loadState, saveState } from './lib/storage'
 import backgroundLogo from './assets/local-data-only.png'
+import FloatingStatsButton from './components/FloatingStatsButton'
 
 
 export default function App() {
@@ -129,16 +130,13 @@ export default function App() {
         {tab === 'home' ? <Home translations={t} lang={lang} /> : <Stats translations={t} lang={lang} />}
       </main>
 
-      <nav className={`p-1 flex fixed bottom-4 left-4 right-4 rounded-xl shadow-lg md:hidden ${darkMode ? 'bg-gray-800 text-white' : 'bg-white'}` }>
-        <button className="tab" onClick={() => setTab('home')} aria-label="home">
-          <img src={HomeIcon} alt="home" className="icon mx-auto" />
-          <div className="text-xs">Home</div>
-        </button>
-        <button className="tab" onClick={() => setTab('stats')} aria-label="stats">
-          <img src={ChartIcon} alt="stats" className="icon mx-auto" />
-          <div className="text-xs">Stats</div>
-        </button>
-      </nav>
+      {/* Floating always-on-top stats button: show right arrow on Home, left arrow on Stats */}
+      {tab === 'home' && (
+        <FloatingStatsButton onClick={() => setTab('stats')} ariaLabel="Open stats" side="right" />
+      )}
+      {tab === 'stats' && (
+        <FloatingStatsButton onClick={() => setTab('home')} ariaLabel="Back to home" side="left" />
+      )}
     </div>
   );
 }

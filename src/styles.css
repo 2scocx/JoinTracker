@@ -110,3 +110,94 @@ html.dark .card {
 html.dark .tab {
 	color: #fff;
 }
+
+/* Floating Stats Button (always-on-top, right center) */
+.floating-stats-wrap {
+	position: fixed;
+	top: 50%;
+	transform: translateY(-50%);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	z-index: 9999;
+	pointer-events: none; /* wrap allows label to be non-interactive except the button */
+}
+.floating-stats-wrap.right { right: 12px; }
+.floating-stats-wrap.left { left: 12px; }
+
+.floating-stats-btn {
+	pointer-events: auto;
+	width: 56px;
+	height: 56px;
+	min-width: 56px;
+	min-height: 56px;
+	border-radius: 9999px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: transparent;
+	color: #f0f0f0;
+	box-shadow: 0 6px 18px rgba(2,6,23,0.25);
+	border: 2px solid rgba(168,139,250,0.2);
+	z-index: 10000;
+	cursor: pointer;
+	-webkit-tap-highlight-color: transparent;
+	transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+}
+.floating-stats-btn.left { left: 0; }
+.floating-stats-btn.right { right: 0; }
+.floating-stats-btn:focus {
+	outline: none;
+	box-shadow: 0 0 0 6px rgba(168,139,250,0.12);
+	transform: translateY(-2px) scale(1.02);
+}
+.floating-stats-btn:hover { transform: translateY(-2px) scale(1.04); }
+.floating-stats-icon { font-size: 1.6rem; transform: translateX(0); color: #a78bfa; }
+
+/* Neon magenta outline */
+.floating-stats-btn {
+	border-color: #a78bfa; /* neon-magenta like edge */
+	box-shadow: 0 8px 28px rgba(167,139,250,0.12), 0 0 8px rgba(167,139,250,0.08) inset;
+}
+
+.floating-stats-label {
+	margin-top: 6px;
+	font-size: 12px;
+	color: #a78bfa;
+	opacity: 0.95;
+	pointer-events: none;
+	user-select: none;
+}
+
+/* Make sure label sits under button on small screens and spacing */
+@media (max-width: 640px) {
+	.floating-stats-wrap.right { right: 10px; }
+	.floating-stats-wrap.left { left: 10px; }
+	.floating-stats-btn { width: 64px; height: 64px; }
+	.floating-stats-icon { font-size: 1.8rem; }
+	.floating-stats-label { font-size: 13px; }
+}
+
+/* Notification explanatory dashed box */
+.notify-info-box {
+	border: 2px dashed rgba(167,139,250,0.35);
+	padding: 10px;
+	border-radius: 10px;
+	margin-top: 8px;
+	background: linear-gradient(180deg, rgba(167,139,250,0.02), rgba(167,139,250,0.01));
+	color: inherit;
+	font-size: 13px;
+}
+
+html.dark .notify-info-box { border-color: rgba(167,139,250,0.6); }
+
+/* Left side variant */
+.floating-stats-btn.left { left: 12px; right: auto; }
+.floating-stats-btn.left .floating-stats-icon { transform: translateX(-1px); }
+
+/* Avoid overlapping when small screens have controls near the center bottom */
+@media (max-width: 420px) {
+	.floating-stats-btn { right: 8px; }
+	.floating-stats-btn.left { left: 8px; }
+}
+

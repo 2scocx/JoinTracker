@@ -11,12 +11,53 @@ export default function Home({translations, lang}){
   const [kind, setKind] = useState('nug') // 'nug', 'hash', or 'wax'
   const [note, setNote] = useState('')
   const [pricePerGram, setPricePerGram] = useState('10')
-  const [lastInputs, setLastInputs] = useState({ nug: { price: '10', note: '' }, hash: { price: '', note: '' }, wax: { price: '', note: '' } });
+  const [lastInputs, setLastInputs] = useState({ nug: { price: '10', note: '', weight: '0.3' }, hash: { price: '', note: '', weight: '' }, wax: { price: '', note: '', weight: '' } });
   const [editingNoteId, setEditingNoteId] = useState(null)
   const [editingNoteValue, setEditingNoteValue] = useState('')
   const [notifyEnabled, setNotifyEnabled] = useState(false)
 
-  useEffect(()=>{ (async ()=> setState(await loadState()))() }, [])
+  useEffect(()=>{
+    (async ()=>{
+      const s = await loadState()
+      setState(s)
+      // restore persisted lastInputs if available
+      if(s && s.settings && s.settings.lastInputs){
+        setLastInputs(prev => ({ ...prev, ...s.settings.lastInputs }))
+      }
+      // restore notification enabled flag
+      if(s && s.settings && s.settings.notify){
+        setNotifyEnabled(true)
+      }
+    })()
+  }, [])
+
+  // helper to persist lastInputs into storage.settings
+  async function updateLastInputs(kindKey, { price, note: newNote, weight: newWeight } = {}){
+    setLastInputs(prev => {
+      const current = prev[kindKey] || {}
+      const nextKind = {
+        price: typeof price !== 'undefined' ? price : current.price || '',
+        note: typeof newNote !== 'undefined' ? newNote : current.note || '',
+        weight: typeof newWeight !== 'undefined' ? newWeight : current.weight || ''
+      }
+      const next = { ...prev, [kindKey]: nextKind }
+      ;(async ()=>{
+        // persist into saved state.settings.lastInputs
+        try{
+          const s = await loadState()
+          s.settings = s.settings || {}
+          s.settings.lastInputs = next
+          await saveState(s)
+          // also update in-memory state.settings for UI consistency
+          setState(prevState => prevState ? { ...prevState, settings: { ...(prevState.settings||{}), lastInputs: next }} : s)
+        }catch(e){
+          // ignore persistence errors
+          console.error('Failed to persist lastInputs', e)
+        }
+      })()
+      return next
+    })
+  }
 
   async function addJoint(){
     if(!state) return
@@ -27,11 +68,8 @@ export default function Home({translations, lang}){
     const s = {...state, entries: [entry, ...state.entries], undoStack: [{action:'add', entry}, ...(state.undoStack||[])] }
     await saveState(s)
     setState(s)
-    setLastInputs(prev => ({
-      ...prev,
-      [kind]: { price: pricePerGram, note }
-    }))
-    setNote('')
+    // persist last inputs for this kind (keep inputs filled for next add)
+    updateLastInputs(kind, { price: pricePerGram, note, weight })
   }
 
   async function saveNoteEdit(id) {
@@ -78,17 +116,31 @@ export default function Home({translations, lang}){
   }
 
   async function toggleNotifications(){
+    const s = await loadState()
+    s.settings = s.settings || {}
+    // If notifications already enabled, disable them (UI only; browser permissions cannot be revoked programmatically)
+    if(s.settings.notify){
+      s.settings.notify = false
+      await saveState(s)
+      setState(s)
+      setNotifyEnabled(false)
+      return
+    }
+    // otherwise request permission and enable
     if(Notification && Notification.permission !== 'granted'){
       await Notification.requestPermission()
     }
+    s.settings.notify = true
+    await saveState(s)
+    setState(s)
     setNotifyEnabled(true)
-    const s = await loadState(); s.settings.notify = true; await saveState(s); setState(s)
   }
 
   // When kind changes, restore last used price and note for that kind
   useEffect(() => {
     setPricePerGram(lastInputs[kind]?.price || '')
     setNote(lastInputs[kind]?.note || '')
+    setWeight(lastInputs[kind]?.weight || '')
   }, [kind])
 
   if(!state) return <div className="p-4">Loading...</div>
@@ -106,12 +158,12 @@ export default function Home({translations, lang}){
         </div>
         <div className="mt-3 space-y-2">
           <label className="block text-sm font-medium">{translations.weight}</label>
-          <input type="number" value={weight} onChange={e=>setWeight(e.target.value)} className="w-full border p-2 rounded" />
+          <input type="number" value={weight} onChange={e=>{ setWeight(e.target.value); updateLastInputs(kind, { weight: e.target.value }) }} className="w-full border p-2 rounded" />
 
           <label className="block text-sm font-medium">{translations.pricePerGram} ({state.settings.currency})</label>
           <input type="number" value={pricePerGram} onChange={e=>{
             setPricePerGram(e.target.value);
-            setLastInputs(prev => ({ ...prev, [kind]: { ...prev[kind], price: e.target.value, note } }));
+            updateLastInputs(kind, { price: e.target.value })
           }} className="w-full border p-2 rounded" />
 
           <label className="block text-sm font-medium">{translations.kind}</label>
@@ -133,10 +185,10 @@ export default function Home({translations, lang}){
           <label className="block text-sm font-medium mt-2">Note (strain, details, etc)</label>
           <input type="text" value={note} onChange={e=>{
             setNote(e.target.value);
-            setLastInputs(prev => ({ ...prev, [kind]: { ...prev[kind], price: pricePerGram, note: e.target.value } }));
+            updateLastInputs(kind, { note: e.target.value })
           }} className="w-full border p-2 rounded" placeholder="e.g. Blue Dream, 22% THC..." />
           <div className="flex space-x-2 mt-3">
-            <button onClick={addJoint} className="flex-1 py-2 bg-teal-500 text-white rounded">{translations.add}</button>
+            <button onClick={addJoint} className="flex-1 px-3 py-1 bg-gray-200 rounded dark:bg-gray-700 dark:text-white dark:border dark:border-purple-400">{translations.add}</button>
           </div>
         </div>
       </div>
@@ -148,10 +200,17 @@ export default function Home({translations, lang}){
           <div><div className="text-sm text-gray-500">{translations.grams}</div><div className="font-medium">{totalGrams.toFixed(2)} g</div></div>
           <div><div className="text-sm text-gray-500">{translations.joints}</div><div className="font-medium">{totalJoints}</div></div>
         </div>
-        <div className="mt-2 flex space-x-2">
-          <button onClick={undoLast} className="px-3 py-1 bg-gray-200 rounded dark:bg-gray-700 dark:text-white dark:border dark:border-purple-400">Undo last</button>
-          <button onClick={restoreUndo} className="px-3 py-1 bg-gray-200 rounded dark:bg-gray-700 dark:text-white dark:border dark:border-purple-400">Restore</button>
-          <button onClick={toggleNotifications} className="px-3 py-1 bg-gray-200 rounded dark:bg-gray-700 dark:text-white dark:border dark:border-purple-400">{translations.notifyEnable}</button>
+        <div className="mt-2">
+          <div className="flex space-x-2">
+            <button onClick={undoLast} className="px-3 py-1 bg-gray-200 rounded dark:bg-gray-700 dark:text-white dark:border dark:border-purple-400">Undo last</button>
+            <button onClick={restoreUndo} className="px-3 py-1 bg-gray-200 rounded dark:bg-gray-700 dark:text-white dark:border dark:border-purple-400">Restore</button>
+            <button onClick={toggleNotifications} className="px-3 py-1 bg-gray-200 rounded dark:bg-gray-700 dark:text-white dark:border dark:border-purple-400">{ (notifyEnabled || (state.settings && state.settings.notify)) ? translations.notifyDisable : translations.notifyEnable }</button>
+          </div>
+          { (notifyEnabled || (state.settings && state.settings.notify)) && (
+            <div className="notify-info-box mt-3">
+              {translations.notifyInfo}
+            </div>
+          ) }
         </div>
       </div>
 

@@ -1,0 +1,29 @@
+/* Emoji effect container */
+.emoji-container {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* Individual emoji animation */
+@keyframes floatUp {
+  0% {
+    transform: translate(0, 0) rotate(0deg) scale(var(--scale));
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate(var(--x-end), -120px) rotate(var(--rotation)) scale(var(--scale));
+    opacity: 0;
+  }
+}
+
+.floating-emoji {
+  position: absolute;
+  animation: floatUp 1.2s ease-out forwards;
+  font-size: 1.5rem;
+  user-select: none;
+  will-change: transform, opacity;
+}

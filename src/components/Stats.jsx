@@ -143,14 +143,14 @@ export default function Stats({translations}){
         </div>
         <div className="mt-2 text-sm text-gray-500">{translations.statsObservedDays}: {Object.keys(countsMap).length} • {translations.joints}: {N}</div>
         <div className="mt-3 grid grid-cols-2 gap-3">
-          <div className="p-2 bg-white rounded text-center dark:bg-gray-800 dark:text-white">
+          <div className="text-left">
             <div className="text-xs text-gray-700 dark:text-gray-300">{translations.statsPosteriorMean}</div>
-            <div className="text-lg font-medium">{postM.toFixed(3)} /day</div>
+            <div className="text-lg font-medium text-blue-500">{postM.toFixed(3)} /day</div>
             <div className="text-xs text-gray-500 dark:text-gray-400">{translations.statsVariance} {postV.toFixed(4)}</div>
           </div>
-          <div className="p-2 bg-white rounded text-center dark:bg-gray-800 dark:text-white">
+          <div className="text-left">
             <div className="text-xs text-gray-700 dark:text-gray-300">{translations.statsExpectedNext}</div>
-            <div className="text-lg font-medium">{expectedNext.toFixed(2)}</div>
+            <div className="text-lg font-medium text-blue-500">{expectedNext.toFixed(2)}</div>
             <div className="text-xs text-gray-500 dark:text-gray-400">{translations.statsPredictivePMF}</div>
           </div>
         </div>
@@ -219,6 +219,71 @@ export default function Stats({translations}){
             </LineChart>
           </ResponsiveContainer>
         </div>
+      </div>
+
+      <div className="card">
+        <div className="flex items-center">
+          <h3 className="font-semibold">Peso delle canne</h3>
+          <InfoButton
+            label="Statistiche sul peso"
+            explanation="Visualizza il trend del peso medio delle canne per giorno, la distribuzione dei pesi, la media, la varianza e la canna più pesante. Utile per capire se stai aumentando o diminuendo la dose."
+            className="ml-2"
+          />
+        </div>
+        {/* Calcolo dati peso */}
+        {(() => {
+          // Raggruppa per giorno
+          const weightByDay = {};
+          state.entries.forEach(e => {
+            const day = e.createdAt.slice(0,10);
+            if (!weightByDay[day]) weightByDay[day] = [];
+            if (typeof e.weight === 'number' && !isNaN(e.weight)) weightByDay[day].push(e.weight);
+          });
+          const avgWeightData = Object.keys(weightByDay).map(day => ({
+            date: day.slice(5),
+            avg: weightByDay[day].length ? (weightByDay[day].reduce((a,b)=>a+b,0)/weightByDay[day].length) : 0
+          })).sort((a,b)=>a.date.localeCompare(b.date));
+
+          // Istogramma distribuzione pesi
+          const bins = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0];
+          const hist = bins.map(bin => ({
+            bin: bin,
+            count: state.entries.filter(e => e.weight >= bin-0.05 && e.weight < bin+0.05).length
+          }));
+
+          // Statistiche
+          const weights = state.entries.map(e => e.weight).filter(w => typeof w === 'number' && !isNaN(w));
+          const mean = weights.length ? (weights.reduce((a,b)=>a+b,0)/weights.length) : 0;
+          const variance = weights.length ? (weights.reduce((a,b)=>a+(b-mean)*(b-mean),0)/weights.length) : 0;
+          const maxWeight = weights.length ? Math.max(...weights) : 0;
+          return (
+            <>
+              <div className="mt-2 text-sm text-gray-500">Media: <span className="font-bold text-blue-500">{mean.toFixed(2)} g</span> • Varianza: <span className="font-bold text-blue-500">{variance.toFixed(3)}</span> • Record: <span className="font-bold text-orange-500">{maxWeight.toFixed(2)} g</span></div>
+              <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div style={{width:'100%', height:200}}>
+                  <ResponsiveContainer>
+                    <LineChart data={avgWeightData}>
+                      <XAxis dataKey="date" />
+                      <YAxis />
+                      <Tooltip />
+                      <Line type="monotone" dataKey="avg" stroke="#a78bfa" strokeWidth={2} dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+                <div style={{width:'100%', height:200}}>
+                  <ResponsiveContainer>
+                    <BarChart data={hist}>
+                      <XAxis dataKey="bin" />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar dataKey="count" fill="#06b6d4" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </>
+          );
+        })()}
       </div>
 
       <div className="card">

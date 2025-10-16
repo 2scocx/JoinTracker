@@ -1,9 +1,11 @@
-import React, {useEffect, useState} from 'react'
+import React, {useEffect, useState, useRef} from 'react'
 import { loadState, saveState, clearState } from '../lib/storage'
 import { v4 as uuidv4 } from 'uuid'
 import nugImg from '../assets/nug.png'
 import hashImg from '../assets/hash.png'
 import waxImg from '../assets/wax.png'
+import EmojiEffect from './EmojiEffect'
+import QuickDataImport from './QuickDataImport'
 
 export default function Home({translations, lang}){
   const [state, setState] = useState(null)
@@ -15,6 +17,8 @@ export default function Home({translations, lang}){
   const [editingNoteId, setEditingNoteId] = useState(null)
   const [editingNoteValue, setEditingNoteValue] = useState('')
   const [notifyEnabled, setNotifyEnabled] = useState(false)
+  const [emojiEffect, setEmojiEffect] = useState({ show: false, x: 0, y: 0 })
+  const addButtonRef = useRef(null)
 
   useEffect(()=>{
     (async ()=>{
@@ -70,6 +74,20 @@ export default function Home({translations, lang}){
     setState(s)
     // persist last inputs for this kind (keep inputs filled for next add)
     updateLastInputs(kind, { price: pricePerGram, note, weight })
+    
+    // Trigger emoji effect
+    if (addButtonRef.current) {
+      setEmojiEffect({ show: false }); // Reset first
+      const rect = addButtonRef.current.getBoundingClientRect()
+      // Use setTimeout to ensure state reset is processed
+      setTimeout(() => {
+        setEmojiEffect({ 
+          show: true, 
+          x: rect.left + rect.width / 2,
+          y: rect.top 
+        })
+      }, 0)
+    }
   }
 
   async function saveNoteEdit(id) {
@@ -136,6 +154,37 @@ export default function Home({translations, lang}){
     setNotifyEnabled(true)
   }
 
+  async function handleImportData(entries) {
+    if (!state) return;
+    // Mark entries as imported so we can filter them later if needed
+    const importedEntries = entries.map(entry => ({ ...entry, imported: true }));
+    const s = {
+      ...state,
+      entries: [...importedEntries, ...state.entries],
+      // Add to undo stack as a batch
+      undoStack: [{
+        action: 'import',
+        entries: importedEntries
+      }, ...(state.undoStack || [])]
+    };
+    await saveState(s);
+    setState(s);
+  }
+
+  async function clearImportedData() {
+    if (!state) return;
+    const s = {
+      ...state,
+      entries: state.entries.filter(e => !e.imported),
+      undoStack: [{
+        action: 'clear-import',
+        entries: state.entries.filter(e => e.imported)
+      }, ...(state.undoStack || [])]
+    };
+    await saveState(s);
+    setState(s);
+  }
+
   // When kind changes, restore last used price and note for that kind
   useEffect(() => {
     setPricePerGram(lastInputs[kind]?.price || '')
@@ -188,7 +237,20 @@ export default function Home({translations, lang}){
             updateLastInputs(kind, { note: e.target.value })
           }} className="w-full border p-2 rounded" placeholder="e.g. Blue Dream, 22% THC..." />
           <div className="flex space-x-2 mt-3">
-            <button onClick={addJoint} className="flex-1 px-3 py-1 bg-gray-200 rounded dark:bg-gray-700 dark:text-white dark:border dark:border-purple-400">{translations.add}</button>
+            <button 
+              ref={addButtonRef}
+              onClick={addJoint} 
+              className="flex-1 px-3 py-1 bg-gray-200 rounded dark:bg-gray-700 dark:text-white dark:border dark:border-purple-400"
+            >
+              {translations.add}
+            </button>
+            {emojiEffect.show && (
+              <EmojiEffect 
+                x={emojiEffect.x} 
+                y={emojiEffect.y} 
+                onComplete={() => setEmojiEffect({ show: false })}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -201,16 +263,31 @@ export default function Home({translations, lang}){
           <div><div className="text-sm text-gray-500">{translations.joints}</div><div className="font-medium">{totalJoints}</div></div>
         </div>
         <div className="mt-2">
-          <div className="flex space-x-2">
+          <div className="flex space-x-2 flex-wrap gap-y-2">
             <button onClick={undoLast} className="px-3 py-1 bg-gray-200 rounded dark:bg-gray-700 dark:text-white dark:border dark:border-purple-400">Undo last</button>
             <button onClick={restoreUndo} className="px-3 py-1 bg-gray-200 rounded dark:bg-gray-700 dark:text-white dark:border dark:border-purple-400">Restore</button>
-            <button onClick={toggleNotifications} className="px-3 py-1 bg-gray-200 rounded dark:bg-gray-700 dark:text-white dark:border dark:border-purple-400">{ (notifyEnabled || (state.settings && state.settings.notify)) ? translations.notifyDisable : translations.notifyEnable }</button>
+            <button onClick={toggleNotifications} className="px-3 py-1 bg-gray-200 rounded dark:bg-gray-700 dark:text-white dark:border dark:border-purple-400">
+              {(notifyEnabled || (state.settings && state.settings.notify)) ? translations.notifyDisable : translations.notifyEnable}
+            </button>
+            {state.entries.some(e => e.imported) && (
+              <button 
+                onClick={clearImportedData}
+                className="px-3 py-1 bg-red-100 hover:bg-red-200 text-red-700 rounded text-sm"
+                title="Remove all imported historical data"
+              >
+                Clear Imported Data
+              </button>
+            )}
           </div>
-          { (notifyEnabled || (state.settings && state.settings.notify)) && (
+          {(notifyEnabled || (state.settings && state.settings.notify)) && (
             <div className="notify-info-box mt-3">
               {translations.notifyInfo}
             </div>
-          ) }
+          )}
+          
+          <div className="mt-3">
+            <QuickDataImport onImport={handleImportData} />
+          </div>
         </div>
       </div>
 
@@ -227,7 +304,21 @@ export default function Home({translations, lang}){
                     e.kind==='wax' ? waxImg : ''
                   } alt={e.kind} className="w-8 h-8"/>
                   <div>
-                    <div className="text-sm">{new Date(e.createdAt).toLocaleString()}</div>
+                    <div className="text-sm flex items-center gap-2">
+                      {new Date(e.createdAt).toLocaleString()}
+                      {/* THC calculation if note contains a number between 0.1 and 99.9 */}
+                      {(() => {
+                        const match = e.note && e.note.match(/(\d{1,2}(?:[.,]\d{1,2})?)/);
+                        if (match) {
+                          let thcPercent = parseFloat(match[1].replace(',', '.'));
+                          if (thcPercent >= 0.1 && thcPercent <= 99.9 && typeof e.weight === 'number') {
+                            const mgThc = e.weight * 1000 * (thcPercent / 100);
+                            return <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-semibold" title="THC mg">{mgThc.toFixed(1)} mg THC</span>;
+                          }
+                        }
+                        return null;
+                      })()}
+                    </div>
                     <div className="text-xs text-gray-500">{e.weight} g</div>
                   </div>
                 </div>

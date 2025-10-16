@@ -201,3 +201,12 @@ html.dark .notify-info-box { border-color: rgba(167,139,250,0.6); }
 	.floating-stats-btn.left { left: 8px; }
 }
 
+body.info-blur-active > #root {
+  filter: blur(8px) !important;
+  transition: filter 0.2s;
+}
+
+body.info-blur-active {
+  overflow: hidden !important;
+}
+

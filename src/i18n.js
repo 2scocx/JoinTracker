@@ -27,6 +27,8 @@ const translations = {
     statsPercentile: 'Your rate percentile',
     statsGlobalComparison: 'Global comparison',
     statsNoData: 'No data yet — add some joints.'
+    ,
+    predictedPast: 'You smoked {time} ago — track your joint!'
   },
   it: {
     addJoint: 'Aggiungi spinello',
@@ -56,6 +58,8 @@ const translations = {
     statsPercentile: 'Percentile del tuo tasso',
     statsGlobalComparison: 'Confronto globale',
     statsNoData: 'Nessun dato ancora — aggiungi spinelli.'
+    ,
+    predictedPast: 'Hai fumato {time} fa — traccia la tua canna!'
   },
   fr: {
     addJoint: 'Ajouter joint',
@@ -85,6 +89,8 @@ const translations = {
     statsPercentile: 'Votre percentile de taux',
     statsGlobalComparison: 'Comparaison globale',
     statsNoData: 'Pas encore de données — ajoutez des joints.'
+    ,
+    predictedPast: 'Vous avez fumé il y a {time} — suivez votre joint !'
   },
   es: {
     addJoint: 'Agregar porro',
@@ -114,6 +120,8 @@ const translations = {
     statsPercentile: 'Percentil de tu tasa',
     statsGlobalComparison: 'Comparación global',
     statsNoData: 'Aún no hay datos — agrega porros.'
+    ,
+    predictedPast: 'Fumaste hace {time} — ¡registra tu porro!'
   }
 }
 

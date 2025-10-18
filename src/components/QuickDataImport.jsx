@@ -3,10 +3,10 @@ import { v4 as uuidv4 } from 'uuid';
 
 export default function QuickDataImport({ onImport, onCancel }) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [days, setDays] = useState(7);
-  const [jointsPerDay, setJointsPerDay] = useState(1);
-  const [weight, setWeight] = useState(0.3);
-  const [pricePerGram, setPricePerGram] = useState(10);
+  const [days, setDays] = useState('');
+  const [jointsPerDay, setJointsPerDay] = useState('');
+  const [weight, setWeight] = useState('');
+  const [pricePerGram, setPricePerGram] = useState('');
   const [kind, setKind] = useState('nug');
 
   const handleImport = () => {
@@ -19,7 +19,6 @@ export default function QuickDataImport({ onImport, onCancel }) {
       for (let j = 0; j < jointsPerDay; j++) {
         const date = new Date();
         date.setDate(endDate.getDate() - i);
-        // Add random hours to spread throughout the day
         date.setHours(Math.floor(Math.random() * 24));
         date.setMinutes(Math.floor(Math.random() * 60));
         
@@ -32,6 +31,10 @@ export default function QuickDataImport({ onImport, onCancel }) {
           note: 'Imported historical data'
         });
       }
+    }
+    // Set the last entry's timestamp to now
+    if (entries.length > 0) {
+      entries[0].createdAt = new Date().toISOString();
     }
     
     onImport(entries);

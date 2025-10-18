@@ -51,7 +51,34 @@ export default function Stats({translations}){
 
   // posterior bell curve data (lambda values)
   const lambdas = []
-  for(let x=0.01;x<6;x+=0.05){ lambdas.push({ x: +x.toFixed(2), y: gammaPDF(x, alpha, beta) }) }
+  // Calculate reasonable x-axis range based on the posterior distribution
+  const mean = posteriorMean(alpha, beta)
+  const stdDev = Math.sqrt(posteriorVariance(alpha, beta))
+  const minX = Math.max(0.01, mean - 3 * stdDev)
+  const maxX = mean + 3 * stdDev
+  const numPoints = 100
+  const step = (maxX - minX) / numPoints
+
+  // Generate points and normalize
+  let maxY = 0
+  const rawPoints = []
+  for(let x = minX; x <= maxX; x += step) {
+    const y = gammaPDF(x, alpha, beta)
+    if (!isNaN(y) && isFinite(y)) {
+      rawPoints.push({ x: +x.toFixed(2), y })
+      maxY = Math.max(maxY, y)
+    }
+  }
+
+  // Normalize y values to ensure visibility and add to final array
+  rawPoints.forEach(point => {
+    if (maxY > 0) {
+      lambdas.push({
+        x: point.x,
+        y: point.y / maxY  // Normalize to 0-1 range
+      })
+    }
+  })
   // compute percentile of user's rate among simulated global samples
   const userLambda = postM
   const perc = percentileOf(userLambda, globalSamples)
@@ -72,36 +99,75 @@ export default function Stats({translations}){
           <div className="mt-2 text-lg font-bold text-blue-500">
             {
               (() => {
-                // If enough data, use average interval between joints; else use global average (e.g. 4.5h)
                 const entries = state.entries;
                 if (entries.length > 1) {
-                  // Compute average interval in ms
-                  let total = 0, count = 0;
+                  // Get the most recent entry time
+                  const lastEntryTime = new Date(entries[0].createdAt).getTime();
+                  const now = Date.now();
+                  const timeSinceLastEntry = now - lastEntryTime;
+
+                  // Calculate recent average interval (last 24h entries weighted more)
+                  let weightedTotal = 0, weightedCount = 0;
+                  const recentIntervals = [];
+                  
                   for (let i = 0; i < entries.length - 1; ++i) {
                     const t1 = new Date(entries[i].createdAt).getTime();
                     const t2 = new Date(entries[i+1].createdAt).getTime();
-                    total += Math.abs(t1 - t2);
-                    count++;
+                    const interval = Math.abs(t1 - t2);
+                    const age = (now - t1) / (24 * 3600000); // age in days
+                    const weight = Math.exp(-age); // exponential decay weight
+                    
+                    weightedTotal += interval * weight;
+                    weightedCount += weight;
+                    recentIntervals.push(interval);
                   }
-                  const avgMs = total / count;
-                  // Predict next: from last entry
-                  const last = new Date(entries[0].createdAt).getTime();
-                  const now = Date.now();
-                  const msLeft = (last + avgMs) - now;
-                  const ms = msLeft > 0 ? msLeft : 0;
-                  const h = Math.floor(ms / 3600000);
-                  const m = Math.round((ms % 3600000) / 60000);
-                  return `Tra circa ${h}h ${m}m`;
+
+                  // Get the weighted average interval
+                  const avgMs = weightedTotal / weightedCount;
+                  
+                  // Calculate predicted time left
+                  const msLeft = (lastEntryTime + avgMs) - now;
+                  
+                  // Format the display string
+                  const formatElapsed = (elapsed) => {
+                    const d = Math.floor(elapsed / (86400000));
+                    const h = Math.floor((elapsed % 86400000) / 3600000);
+                    const m = Math.floor((elapsed % 3600000) / 60000);
+                    const s = Math.floor((elapsed % 60000) / 1000);
+                    let parts = []
+                    if (d > 0) parts.push(`${d}g`)
+                    if (h > 0) parts.push(`${h}h`)
+                    if (m > 0) parts.push(`${m}m`)
+                    if (s > 0 && parts.length === 0) parts.push(`${s}s`)
+                    return parts.join(' ')
+                  }
+
+                  if (msLeft <= -300000) { // If more than 5 minutes past prediction
+                    const elapsed = -msLeft;
+                    const timeStr = formatElapsed(elapsed);
+                    // Use translation for past prediction, injecting the formatted time
+                    if (translations && translations.predictedPast) {
+                      return translations.predictedPast.replace('{time}', timeStr)
+                    }
+                    return `Hai fumato ${timeStr} fa — traccia la tua canna!`
+                  } else if (msLeft <= 0) { // Within 5 minutes of prediction
+                    // Use translation for predictedNow if available
+                    if (translations && translations.predictedNow) return translations.predictedNow
+                    return "Crediamo che tu stia fumando ora"
+                  } else { // Future prediction
+                    const h = Math.floor(msLeft / 3600000);
+                    const m = Math.round((msLeft % 3600000) / 60000);
+                    return `Tra circa ${h}h ${m}m`
+                  }
                 } else {
-                  // Global average: 4.5h (270 min)
                   return 'Tra circa 4h 30m (stima globale)';
                 }
               })()
             }
           </div>
           <div className="mt-2 text-xs text-gray-400 italic">
-          La previsione si aggiorna ogni volta che aggiungi una canna, in base alle tue abitudini.
-        </div>
+            La previsione si aggiorna in tempo reale e si adatta alle tue abitudini.
+          </div>
       </div>
         <div className="flex items-center mt-4">
           <h3 className="font-semibold">Tipo più usato</h3>
@@ -168,10 +234,27 @@ export default function Stats({translations}){
         <div style={{width:'100%', height:180}}>
           <ResponsiveContainer>
             <LineChart data={lambdas}>
-              <XAxis dataKey="x" />
-              <YAxis />
-              <Tooltip />
-              <Line type="monotone" dataKey="y" stroke="#06b6d4" strokeWidth={2} dot={false} />
+              <XAxis 
+                dataKey="x"
+                domain={['auto', 'auto']}
+                tickFormatter={(value) => value.toFixed(1)}
+              />
+              <YAxis 
+                domain={[0, 1]}
+                hide={true}
+              />
+              <Tooltip 
+                formatter={(value, name) => [value.toFixed(3), 'Probability Density']}
+                labelFormatter={(label) => `λ = ${Number(label).toFixed(2)}`}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="y" 
+                stroke="#06b6d4" 
+                strokeWidth={2} 
+                dot={false}
+                isAnimationActive={false}
+              />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -193,7 +276,7 @@ export default function Stats({translations}){
               <XAxis dataKey="date" />
               <YAxis />
               <Tooltip />
-              <Bar dataKey="count" />
+              <Bar dataKey="count" fill="#06b6d4" />
             </BarChart>
           </ResponsiveContainer>
         </div>

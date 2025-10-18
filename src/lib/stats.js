@@ -22,20 +22,76 @@ export const posteriorVariance = (a,b)=> a/(b*b)
 
 // gamma PDF for lambda values (posterior)
 export function gammaPDF(x, alpha, beta){
-  if (x<=0) return 0
-  return Math.pow(beta,alpha)/gamma(alpha) * Math.pow(x,alpha-1) * Math.exp(-beta*x)
+  if (x <= 0) return 0
+  
+  // Work in log space to avoid numerical overflow
+  try {
+    const logGamma = Math.log(beta) * alpha - logGammaFn(alpha) + 
+                     (alpha - 1) * Math.log(x) - beta * x
+    return Math.exp(logGamma)
+  } catch (e) {
+    return 0
+  }
+}
+
+// Log gamma function using Lanczos approximation
+function logGammaFn(z) {
+  if (z < 0.5) {
+    // Reflection formula
+    return Math.log(Math.PI) - Math.log(Math.sin(Math.PI * z)) - logGammaFn(1 - z)
+  }
+
+  // Lanczos coefficients
+  const p = [
+    0.99999999999980993,
+    676.5203681218851,
+    -1259.1392167224028,
+    771.32342877765313,
+    -176.61502916214059,
+    12.507343278686905,
+    -0.13857109526572012,
+    9.9843695780195716e-6,
+    1.5056327351493116e-7
+  ]
+
+  z -= 1
+  let x = p[0]
+  for (let i = 1; i < p.length; i++) {
+    x += p[i] / (z + i)
+  }
+
+  const t = z + p.length - 1.5
+  return Math.log(Math.sqrt(2 * Math.PI)) +
+         (z + 0.5) * Math.log(t) -
+         t +
+         Math.log(x)
 }
 
 // approximate gamma using Lanczos or simple for integer alpha
-function gamma(z){
-  // use simple approximation for small z using Math.gamma if available else approximate
-  // fallback to Stirling for larger values
-  if (z===1) return 1
-  if (z===2) return 1
-  // use Lanczos coefficients naive (but for our small alpha it's fine)
-  let x = 1
-  for(let i=1;i<z;i++) x *= i
-  return x
+function gamma(z) {
+  // Use Lanczos approximation
+  const p = [
+    676.5203681218851,
+    -1259.1392167224028,
+    771.32342877765313,
+    -176.61502916214059,
+    12.507343278686905,
+    -0.13857109526572012,
+    9.9843695780195716e-6,
+    1.5056327351493116e-7
+  ]
+  
+  if (z < 0.5) {
+    return Math.PI / (Math.sin(Math.PI * z) * gamma(1 - z))
+  }
+  
+  z -= 1
+  let x = 0.99999999999980993
+  for (let i = 0; i < p.length; i++) {
+    x += p[i] / (z + i + 1)
+  }
+  const t = z + p.length - 0.5
+  return Math.sqrt(2 * Math.PI) * Math.pow(t, z + 0.5) * Math.exp(-t) * x
 }
 
 // simulate global distribution of lambda (for percentile comparison)
